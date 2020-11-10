@@ -2,7 +2,6 @@ package com.simtlix.fixclientexample;
 
 import quickfix.*;
 import quickfix.Message;
-import quickfix.MessageCracker;
 import quickfix.field.*;
 import quickfix.fix50.*;
 import quickfix.fixt11.Logon;
@@ -51,14 +50,31 @@ public class ExampleClientApplication extends ApplicationCrackerAdapter {
      * @param sessionId
      */
     private void enviarSusbscripciones(SessionID sessionId) throws SessionNotFound {
+
+        //basado en pag 35 de SBAFIX_MD_1_18_9_MAR2020_preliminar.pdf
+        //ver notas pag 41
         MarketDataRequest marketDataRequest = new MarketDataRequest();
 
-        Integer counter = 1;
-        marketDataRequest.set(new MDReqID(counter.toString()));
-        marketDataRequest.set(new SubscriptionRequestType('1'));
+        //session ID
+        marketDataRequest.set(new MDReqID(sessionId.toString()));
+        //Indica que tipo de respuesta se está esperando. Valores válidos:
+        //0:Captura, 1:Captura+actualizaciones (subscripción) no
+        //soportada, 2:Anular subscripción (no soportada para DMA).
+        marketDataRequest.set(new SubscriptionRequestType('0'));
+        //Profundidad del Mercado tanto para capturas de libro, como
+        //actualizaciones incrementales.
+        //Para DMA no esta soportado, siempre se informan 5 niveles
         marketDataRequest.set(new MarketDepth(1));
-        marketDataRequest.set(new MDUpdateType(1));
+        //Especifica la cantidad de símbolos repetidos en el grupo.
+        marketDataRequest.set(new NoRelatedSym(1));
+        //Números de campos MDEntryType solicitados
+        marketDataRequest.set(new NoMDEntryTypes('A'));
         Session.sendToTarget(marketDataRequest, sessionId);
+
+        /*
+        Luego de una subscripción correcta se recibe un MarketDataSnapshotFullRefresh (MsgType = W)
+        y posteriormente se van recibiendo MarketDataIncrementalRefresh (MsgType = X)
+         */
     }
 
     /**
@@ -119,6 +135,16 @@ public class ExampleClientApplication extends ApplicationCrackerAdapter {
     @quickfix.MessageCracker.Handler
     public void onMessage(MarketDataSnapshotFullRefresh message, SessionID sessionID) {
         System.out.println("MarketDataSnapshotFullRefresh");
+    }
+
+    @quickfix.MessageCracker.Handler
+    public void onMessage(MarketDataIncrementalRefresh message, SessionID sessionID) {
+        System.out.println("MarketDataIncrementalRefresh");
+    }
+
+    @quickfix.MessageCracker.Handler
+    public void onMessage(Logon message, SessionID sessionID) {
+        System.out.println("Logon successfully");
     }
 
     private  boolean esExecutionReportNew(ExecutionReport executionReport) throws FieldNotFound {
