@@ -21,7 +21,7 @@ public class FixClientExampleApplication {
 		NewOrderSingle newOrder = new NewOrderSingle(new ClOrdID("12345"), new Side(Side.SUBSCRIBE),
 				new TransactTime(LocalDateTime.now()), new OrdType(OrdType.MARKET));
 		newOrder.set(new OrderQty(1000));
-		ExampleClientApplication application = new ExampleClientApplication(newOrder, usuario, password);
+		ExampleClientApplication application = new ExampleClientApplication(usuario, password);
 
 
 		SessionSettings settings = null;
@@ -37,12 +37,7 @@ public class FixClientExampleApplication {
 			e.printStackTrace();
 		}
 		Thread.sleep(5000l);
-		if(application.estaLogueado()) {
-			System.out.println("se logueó");
-		}
-		if(application.seEjecutoOrdenCorrectamente()){
-			System.out.println("Orden ejecutada");
-		}
+
 	}
 
 }
