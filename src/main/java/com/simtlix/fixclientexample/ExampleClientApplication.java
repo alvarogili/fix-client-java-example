@@ -4,6 +4,7 @@ import quickfix.*;
 import quickfix.Message;
 import quickfix.field.*;
 import quickfix.fix50.*;
+import quickfix.fix50.component.Instrument;
 import quickfix.fixt11.Logon;
 
 /**
@@ -65,10 +66,30 @@ public class ExampleClientApplication extends ApplicationCrackerAdapter {
         //actualizaciones incrementales.
         //Para DMA no esta soportado, siempre se informan 5 niveles
         marketDataRequest.set(new MarketDepth(1));
+        //esta etiqueta se usa para describir el tipo de actualización de
+        //Market Data y ByMA requiere el valor 1 en este campo.
+        marketDataRequest.set(new MDUpdateType(1));
+        //Especifica si las entradas tienen o no que ser agregadas.
+        marketDataRequest.set(new AggregatedBook(false));
+        // MDEntryType debe ser el primer campo en este grupo de
+        //repetición. Se trata de un listado detallando la información
+        //(MarketDataEntries) que la firma solicitante está interesada en
+        //recibir
+        MarketDataRequest.NoMDEntryTypes entries = new MarketDataRequest.NoMDEntryTypes();
+        entries.set(new MDEntryType(MDEntryType.BID));
+        marketDataRequest.addGroup(entries);
+
         //Especifica la cantidad de símbolos repetidos en el grupo.
         marketDataRequest.set(new NoRelatedSym(1));
-        //Números de campos MDEntryType solicitados
-        marketDataRequest.set(new NoMDEntryTypes('A'));
+        MarketDataRequest.NoRelatedSym symbols = new MarketDataRequest.NoRelatedSym();
+        symbols.set(new Symbol("EUR/USD"));
+        marketDataRequest.addGroup(symbols);
+        //Representación “humana” del título. En caso de no existir un
+        //símbolo para el intrumento, puede asignarse el valor del
+        //SecurityID. Solo usar “[N/A]” cuando se está solicitando
+        //información por producto (Product = 7).
+        //Ver “Instrumentos usados para informar datos estadisticos” para
+        //suscribir mensajes de estadísticas
         Session.sendToTarget(marketDataRequest, sessionId);
 
         /*
