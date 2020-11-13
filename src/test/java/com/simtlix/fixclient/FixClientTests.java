@@ -4,6 +4,10 @@ import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import quickfix.*;
+import quickfix.field.MDEntryPx;
+import quickfix.field.MDEntrySize;
+import quickfix.field.MDEntryType;
+import quickfix.fix50.MarketDataSnapshotFullRefresh;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -47,14 +51,24 @@ public class FixClientTests {
 	}
 
 	@Test
-	public void flujoNominal() throws InterruptedException, ConfigError {
+	public void flujoNominal() throws InterruptedException, ConfigError, FieldNotFound {
 		FixClient application = new FixClient(user, password);
 		socketInitiator = new SocketInitiator(application, new MemoryStoreFactory(), settings,
 					new ScreenLogFactory(), new DefaultMessageFactory());
 		socketInitiator.start();
 		Thread.sleep(5000l);
 		assertTrue(application.getConnected());
-		assertTrue(application.getMarketDataSnapshotFullRefreshReceived());
+
+		MarketDataSnapshotFullRefresh.NoMDEntries noMDEntries = new MarketDataSnapshotFullRefresh.NoMDEntries();
+		MDEntryType mdEntryType = new MDEntryType();
+		MDEntryPx mdEntryPx = new MDEntryPx();
+		MDEntrySize mdEntrySize = new MDEntrySize();
+		application.getLastMarketDataSnapshotFullRefresh().getGroup(1, noMDEntries);
+		noMDEntries.get(mdEntryType);
+		noMDEntries.get(mdEntryPx);
+		noMDEntries.get(mdEntrySize);
+
+		assertEquals(12.32, mdEntryPx.getValue(),0.0);
 	}
 
 	private static void iniciarServidor() throws ConfigError, InterruptedException, FileNotFoundException {

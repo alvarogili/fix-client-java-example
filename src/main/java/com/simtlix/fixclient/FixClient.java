@@ -16,8 +16,10 @@ public class FixClient extends ApplicationCrackerAdapter {
     private final String user;
     private final String password;
     private Boolean connected = false;
+
+    //attributes for text purpose
     private String lastTextMessage = "";
-    private Boolean marketDataSnapshotFullRefreshReceived = false;
+    MarketDataSnapshotFullRefresh lastMarketDataSnapshotFullRefresh = null;
 
     public FixClient(String user, String password) {
         this.user = user;
@@ -108,8 +110,17 @@ public class FixClient extends ApplicationCrackerAdapter {
     }
 
     @quickfix.MessageCracker.Handler
-    public void onMessage(MarketDataSnapshotFullRefresh message, SessionID sessionID) {
-        marketDataSnapshotFullRefreshReceived = true;
+    public void onMessage(MarketDataSnapshotFullRefresh message, SessionID sessionID) throws FieldNotFound {
+        lastMarketDataSnapshotFullRefresh = message;
+        MarketDataSnapshotFullRefresh.NoMDEntries noMDEntries = new MarketDataSnapshotFullRefresh.NoMDEntries();
+        MDEntryType mdEntryType = new MDEntryType();
+        MDEntryPx mdEntryPx = new MDEntryPx();
+        MDEntrySize mdEntrySize = new MDEntrySize();
+        message.getGroup(1, noMDEntries);
+        noMDEntries.get(mdEntryType);
+        noMDEntries.get(mdEntryPx);
+        noMDEntries.get(mdEntrySize);
+
     }
 
     @quickfix.MessageCracker.Handler
@@ -224,9 +235,6 @@ public class FixClient extends ApplicationCrackerAdapter {
         //suscribir mensajes de estadísticas
         Session.sendToTarget(marketDataRequest, sessionId);
 
-
-
-
         /*
         Luego de una subscripción correcta se recibe un MarketDataSnapshotFullRefresh (MsgType = W)
         y posteriormente se van recibiendo MarketDataIncrementalRefresh (MsgType = X)
@@ -241,7 +249,7 @@ public class FixClient extends ApplicationCrackerAdapter {
         return lastTextMessage;
     }
 
-    public Boolean getMarketDataSnapshotFullRefreshReceived() {
-        return marketDataSnapshotFullRefreshReceived;
+    public MarketDataSnapshotFullRefresh getLastMarketDataSnapshotFullRefresh() {
+        return lastMarketDataSnapshotFullRefresh;
     }
 }
