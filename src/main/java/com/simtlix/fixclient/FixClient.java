@@ -1,32 +1,35 @@
-package com.simtlix.fixclientexample;
+package com.simtlix.fixclient;
 
 import quickfix.*;
 import quickfix.Message;
 import quickfix.field.*;
 import quickfix.fix50.*;
-import quickfix.fix50.component.Instrument;
 import quickfix.fixt11.Logon;
+import quickfix.fixt11.Logout;
 
 /**
- * By https://blog.10pines.com/es/2011/11/21/protocolo-fix-aspectos-basicos-y-utilizacion-en-java-mediante-la-librera-quickfixj/
+ * Financial Information eXchange Client
+ * @author Alvaro Gili
  */
-public class ExampleClientApplication extends ApplicationCrackerAdapter {
+public class FixClient extends ApplicationCrackerAdapter {
 
-    private final String usuario;
+    private final String user;
     private final String password;
+    private Boolean connected = false;
+    private String lastTextMessage = "";
+    private Boolean marketDataSnapshotFullRefreshReceived = false;
 
-    public ExampleClientApplication(String usuario, String password) {
-        this.usuario = usuario;
+    public FixClient(String user, String password) {
+        this.user = user;
         this.password = password;
     }
 
     /**
-     * Esta función es llamada cuando se establece una sesión
-     * @param sessionId
+     * It function was called when the session was established
+     * @param sessionId Session's ID
      */
     @Override
     public void onCreate(SessionID sessionId) {
-        System.out.println("onCreate");
     }
 
     /**
@@ -38,12 +41,141 @@ public class ExampleClientApplication extends ApplicationCrackerAdapter {
      */
     @Override
     public  void onLogon(SessionID sessionId) {
-        System.out.println("onLogon");
+        System.out.println("Login with server successfully");
+        this.connected = true;
         try {
             enviarSusbscripciones(sessionId);
         } catch (SessionNotFound e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Notifica cuando una sesión FIX ya no esta en linea,
+     * o cuando se recibe un mensaje de Logout (5). Posibles
+     * causes de ser llamada esta función son: un logout válido,
+     * problemas en la conexión, o terminación forzada de la conexión
+     * @param sessionId
+     */
+    @Override
+    public void onLogout(SessionID sessionId) {
+        System.out.println("onLogout");
+    }
+
+    /**
+     * Es prácticamente el núcleo de una aplicación quickfix.
+     * Esta función permitirá recibir las confirmaciones
+     * de una orden emitida (o rechazo). La excepción ”FieldNotFound”
+     * permite decir a la contraparte que faltaron campos en el
+     * mensaje, esta excepción es tirada automáticamente por la clase
+     * Message. La excepción ”UnsupportedMessageType” permite
+     * indicar a la contra parte que no se posible procesar ese tipo
+     * de mensaje. La excepción ”IncorrectTagValue” permite indicar que
+     * un campo tiene un valor o rango no soportado.
+     * @param message
+     * @param sessionId
+     * @throws FieldNotFound
+     */
+    @Override
+    public  void fromApp(Message message, SessionID sessionId) {
+        try {
+            System.out.println("Message received: " + message.toString());
+            crack(message, sessionId);
+        } catch (UnsupportedMessageType unsupportedMessageType) {
+
+            unsupportedMessageType.printStackTrace();
+        } catch (IncorrectTagValue incorrectTagValue) {
+            incorrectTagValue.printStackTrace();
+        } catch (FieldNotFound fieldNotFound) {
+            fieldNotFound.printStackTrace();
+        }
+    }
+
+    @quickfix.MessageCracker.Handler
+    public void onMessage(ExecutionReport message, SessionID sessionID) {
+        try {
+            if (esExecutionReportNew(message)) {
+                new Exception("No es una orden nueva");
+            }
+        } catch (FieldNotFound fieldNotFound) {
+            fieldNotFound.printStackTrace();
+        }
+    }
+
+    @quickfix.MessageCracker.Handler
+    public void onMessage(MarketDataRequestReject message, SessionID sessionID) {
+        System.out.println("MarketDataRequestReject");
+    }
+
+    @quickfix.MessageCracker.Handler
+    public void onMessage(MarketDataSnapshotFullRefresh message, SessionID sessionID) {
+        marketDataSnapshotFullRefreshReceived = true;
+    }
+
+    @quickfix.MessageCracker.Handler
+    public void onMessage(MarketDataIncrementalRefresh message, SessionID sessionID) {
+        System.out.println("MarketDataIncrementalRefresh");
+    }
+
+    @quickfix.MessageCracker.Handler
+    public void onMessage(Logon message, SessionID sessionID) {
+    }
+
+    @quickfix.MessageCracker.Handler
+    public void onMessage(RejectLogon message, SessionID sessionID) {
+        lastTextMessage = message.getMessage();
+    }
+
+    @quickfix.MessageCracker.Handler
+    public void onMessage(Logout message, SessionID sessionID) throws FieldNotFound {
+        lastTextMessage = message.getText().toString();
+    }
+
+    private  boolean esExecutionReportNew(ExecutionReport executionReport) throws FieldNotFound {
+        return executionReport.getExecType().getValue() == ExecType.NEW;
+    }
+
+    /**
+     * Notifica cuando el Engine QuickFIX enviará un mensaje administrativo a la
+     * contra parte. Algo interesante, esa que la referencia que es pasada del
+     * mensaje no es constante. Es decir, se puede modificar el mensaje.
+     * @param message
+     * @param sessionId
+     */
+    @Override
+    public  void toAdmin(Message message, SessionID sessionId) {
+        if (message instanceof Logon) {
+            message.setField(new Username(user));
+            message.setField(new Password(password));
+        }
+    }
+
+    /**
+     * Notifica cuando llega al engine QuickFIX un mensaje administrativo de su contra parte
+     * @param message
+     * @param sessionId
+     * @throws FieldNotFound
+     * @throws IncorrectDataFormat
+     * @throws IncorrectTagValue
+     * @throws RejectLogon
+     */
+    @Override
+    public void fromAdmin(Message message, SessionID sessionId) throws FieldNotFound, IncorrectDataFormat, IncorrectTagValue, RejectLogon {
+        System.out.println("fromAdmin");
+        fromApp(message, sessionId);
+    }
+
+    /**
+     * Función de callback que se llama cuando se envía un mensaje de
+     * aplicación. La referencia al mensaje no es constante. Arrojar
+     * una excepción ”DoNotSend”, hace que el engine QuickFIX no envie este mensaje.
+     * @param message
+     * @param sessionId
+     * @throws DoNotSend
+     */
+    @Override
+    public void toApp(Message message, SessionID sessionId) throws DoNotSend {
+        System.out.println("toApp");
     }
 
     /**
@@ -92,126 +224,24 @@ public class ExampleClientApplication extends ApplicationCrackerAdapter {
         //suscribir mensajes de estadísticas
         Session.sendToTarget(marketDataRequest, sessionId);
 
+
+
+
         /*
         Luego de una subscripción correcta se recibe un MarketDataSnapshotFullRefresh (MsgType = W)
         y posteriormente se van recibiendo MarketDataIncrementalRefresh (MsgType = X)
          */
     }
 
-    /**
-     * Notifica cuando una sesión FIX ya no esta en linea,
-     * o cuando se recibe un mensaje de Logout (5). Posibles
-     * causes de ser llamada esta función son: un logout válido,
-     * problemas en la conexión, o terminación forzada de la conexión
-     * @param sessionId
-     */
-    @Override
-    public void onLogout(SessionID sessionId) {
-        System.out.println("onLogout");
+    public Boolean getConnected() {
+        return connected;
     }
 
-    /**
-     * Es prácticamente el núcleo de una aplicación quickfix.
-     * Esta función permitirá recibir las confirmaciones
-     * de una orden emitida (o rechazo). La excepción ”FieldNotFound”
-     * permite decir a la contraparte que faltaron campos en el
-     * mensaje, esta excepción es tirada automáticamente por la clase
-     * Message. La excepción ”UnsupportedMessageType” permite
-     * indicar a la contra parte que no se posible procesar ese tipo
-     * de mensaje. La excepción ”IncorrectTagValue” permite indicar que
-     * un campo tiene un valor o rango no soportado.
-     * @param message
-     * @param sessionId
-     * @throws FieldNotFound
-     */
-    @Override
-    public  void fromApp(Message message, SessionID sessionId) {
-        try {
-            crack(message, sessionId);
-        } catch (UnsupportedMessageType unsupportedMessageType) {
-            unsupportedMessageType.printStackTrace();
-        } catch (IncorrectTagValue incorrectTagValue) {
-            incorrectTagValue.printStackTrace();
-        } catch (FieldNotFound fieldNotFound) {
-            fieldNotFound.printStackTrace();
-        }
+    public String getLastTextMessage() {
+        return lastTextMessage;
     }
 
-    @quickfix.MessageCracker.Handler
-    public void onMessage(ExecutionReport message, SessionID sessionID) {
-        try {
-            if (esExecutionReportNew(message)) {
-                new Exception("No es una orden nueva");
-            }
-        } catch (FieldNotFound fieldNotFound) {
-            fieldNotFound.printStackTrace();
-        }
-    }
-
-    @quickfix.MessageCracker.Handler
-    public void onMessage(MarketDataRequestReject message, SessionID sessionID) {
-        System.out.println("MarketDataRequestReject");
-    }
-
-    @quickfix.MessageCracker.Handler
-    public void onMessage(MarketDataSnapshotFullRefresh message, SessionID sessionID) {
-        System.out.println("MarketDataSnapshotFullRefresh");
-    }
-
-    @quickfix.MessageCracker.Handler
-    public void onMessage(MarketDataIncrementalRefresh message, SessionID sessionID) {
-        System.out.println("MarketDataIncrementalRefresh");
-    }
-
-    @quickfix.MessageCracker.Handler
-    public void onMessage(Logon message, SessionID sessionID) {
-        System.out.println("Logon successfully");
-    }
-
-    private  boolean esExecutionReportNew(ExecutionReport executionReport) throws FieldNotFound {
-        return executionReport.getExecType().getValue() == ExecType.NEW;
-    }
-
-    /**
-     * Notifica cuando el Engine QuickFIX enviará un mensaje administrativo a la
-     * contra parte. Algo interesante, esa que la referencia que es pasada del
-     * mensaje no es constante. Es decir, se puede modificar el mensaje.
-     * @param message
-     * @param sessionId
-     */
-    @Override
-    public  void toAdmin(Message message, SessionID sessionId) {
-        if (message instanceof Logon) {
-            message.setField(new Username(usuario));
-            message.setField(new Password(password));
-        }
-    }
-
-    /**
-     * Notifica cuando llega al engine QuickFIX un mensaje administrativo de su contra parte
-     * @param message
-     * @param sessionId
-     * @throws FieldNotFound
-     * @throws IncorrectDataFormat
-     * @throws IncorrectTagValue
-     * @throws RejectLogon
-     */
-    @Override
-    public void fromAdmin(Message message, SessionID sessionId) throws FieldNotFound, IncorrectDataFormat, IncorrectTagValue, RejectLogon {
-        System.out.println("fromAdmin");
-        fromApp(message, sessionId);
-    }
-
-    /**
-     * Función de callback que se llama cuando se envía un mensaje de
-     * aplicación. La referencia al mensaje no es constante. Arrojar
-     * una excepción ”DoNotSend”, hace que el engine QuickFIX no envie este mensaje.
-     * @param message
-     * @param sessionId
-     * @throws DoNotSend
-     */
-    @Override
-    public void toApp(Message message, SessionID sessionId) throws DoNotSend {
-        System.out.println("toApp");
+    public Boolean getMarketDataSnapshotFullRefreshReceived() {
+        return marketDataSnapshotFullRefreshReceived;
     }
 }

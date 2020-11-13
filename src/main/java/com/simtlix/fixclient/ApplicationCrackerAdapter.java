@@ -1,4 +1,4 @@
-package com.simtlix.fixclientexample;
+package com.simtlix.fixclient;
 
 import quickfix.*;
 
