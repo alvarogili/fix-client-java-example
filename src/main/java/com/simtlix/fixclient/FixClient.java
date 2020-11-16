@@ -7,6 +7,9 @@ import quickfix.fix50.*;
 import quickfix.fixt11.Logon;
 import quickfix.fixt11.Logout;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Financial Information eXchange Client
  * @author Alvaro Gili
@@ -16,6 +19,7 @@ public class FixClient extends ApplicationCrackerAdapter {
     private final String user;
     private final String password;
     private Boolean connected = false;
+    private Map<String, Double> priceBySymbol = new HashMap();
 
     //attributes for text purpose
     private String lastTextMessage = "";
@@ -113,19 +117,34 @@ public class FixClient extends ApplicationCrackerAdapter {
     public void onMessage(MarketDataSnapshotFullRefresh message, SessionID sessionID) throws FieldNotFound {
         lastMarketDataSnapshotFullRefresh = message;
         MarketDataSnapshotFullRefresh.NoMDEntries noMDEntries = new MarketDataSnapshotFullRefresh.NoMDEntries();
-        MDEntryType mdEntryType = new MDEntryType();
-        MDEntryPx mdEntryPx = new MDEntryPx();
-        MDEntrySize mdEntrySize = new MDEntrySize();
-        message.getGroup(1, noMDEntries);
-        noMDEntries.get(mdEntryType);
-        noMDEntries.get(mdEntryPx);
-        noMDEntries.get(mdEntrySize);
+        for(int i = 0; i < message.getNoMDEntries().getValue(); i++) {
+            MDEntryType mdEntryType = new MDEntryType();
+            MDEntryPx mdEntryPx = new MDEntryPx();
+            MDEntrySize mdEntrySize = new MDEntrySize();
+            message.getGroup(i+1, noMDEntries);
+            noMDEntries.get(mdEntryType);
+            noMDEntries.get(mdEntryPx);
+            noMDEntries.get(mdEntrySize);
+            //TODO almacenar
+            priceBySymbol.put("EUR/USD", mdEntryPx.getValue());
+        }
 
     }
 
     @quickfix.MessageCracker.Handler
-    public void onMessage(MarketDataIncrementalRefresh message, SessionID sessionID) {
-        System.out.println("MarketDataIncrementalRefresh");
+    public void onMessage(MarketDataIncrementalRefresh message, SessionID sessionID) throws FieldNotFound {
+        MarketDataSnapshotFullRefresh.NoMDEntries noMDEntries = new MarketDataSnapshotFullRefresh.NoMDEntries();
+        for(int i = 0; i < message.getNoMDEntries().getValue(); i++) {
+            MDEntryType mdEntryType = new MDEntryType();
+            MDEntryPx mdEntryPx = new MDEntryPx();
+            MDEntrySize mdEntrySize = new MDEntrySize();
+            message.getGroup(i+1, noMDEntries);
+            noMDEntries.get(mdEntryType);
+            noMDEntries.get(mdEntryPx);
+            noMDEntries.get(mdEntrySize);
+            //TODO almacenar
+            priceBySymbol.put("EUR/USD", mdEntryPx.getValue());
+        }
     }
 
     @quickfix.MessageCracker.Handler
@@ -234,7 +253,6 @@ public class FixClient extends ApplicationCrackerAdapter {
         //Ver “Instrumentos usados para informar datos estadisticos” para
         //suscribir mensajes de estadísticas
         Session.sendToTarget(marketDataRequest, sessionId);
-
         /*
         Luego de una subscripción correcta se recibe un MarketDataSnapshotFullRefresh (MsgType = W)
         y posteriormente se van recibiendo MarketDataIncrementalRefresh (MsgType = X)
@@ -245,11 +263,7 @@ public class FixClient extends ApplicationCrackerAdapter {
         return connected;
     }
 
-    public String getLastTextMessage() {
-        return lastTextMessage;
-    }
-
-    public MarketDataSnapshotFullRefresh getLastMarketDataSnapshotFullRefresh() {
-        return lastMarketDataSnapshotFullRefresh;
+    public Map<String, Double> getPriceBySymbol() {
+        return priceBySymbol;
     }
 }
