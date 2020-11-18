@@ -1,4 +1,4 @@
-package com.simtlix.fixclient;
+package com.agili.fixclient;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import quickfix.*;
@@ -11,7 +11,8 @@ public class FixClientApplication {
 
 	public static void main(String[] args) throws InterruptedException {
 		try {
-			SessionSettings settings = new SessionSettings(new FileInputStream("src/main/resources/application.properties"));
+			ClassLoader loader = Thread.currentThread().getContextClassLoader();
+			SessionSettings settings = new SessionSettings(loader.getResourceAsStream("application.properties"));
 			String user = settings.getDefaultProperties().getProperty("user");
 			String password = settings.getDefaultProperties().getProperty("password");
 			FixClient application = new FixClient(user, password);
@@ -21,8 +22,6 @@ public class FixClientApplication {
 			socketInitiator.start();
 		} catch (ConfigError configError) {
 			configError.printStackTrace();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
 		}
 		Thread.sleep(5000l);
 

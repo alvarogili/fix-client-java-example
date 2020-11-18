@@ -1,5 +1,7 @@
-# fix-client-example
-Fix client example
+# Fix Client Example
 
+This project implements the FIX protocol(Financial Information eXchange).
+It creates a Logon and at the moment manages a subscription of a symbol with the message _MarketDataRequest_
+and process the responses of it (_MarketDataSnapshotFullRefresh_ and _MarketDataIncrementalRefresh_)
 
-Based in https://blog.10pines.com/es/2011/11/21/protocolo-fix-aspectos-basicos-y-utilizacion-en-java-mediante-la-librera-quickfixj/
+This library support the protocol version 5.0 and the transport protocol version 1.1

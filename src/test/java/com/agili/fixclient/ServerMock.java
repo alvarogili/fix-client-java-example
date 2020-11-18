@@ -1,4 +1,4 @@
-package com.simtlix.fixclient;
+package com.agili.fixclient;
 
 import quickfix.*;
 import quickfix.field.*;

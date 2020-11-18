@@ -1,13 +1,9 @@
-package com.simtlix.fixclient;
+package com.agili.fixclient;
 
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import quickfix.*;
-import quickfix.field.MDEntryPx;
-import quickfix.field.MDEntrySize;
-import quickfix.field.MDEntryType;
-import quickfix.fix50.MarketDataSnapshotFullRefresh;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -29,7 +25,7 @@ public class FixClientTests {
 
 	@BeforeClass
 	public static void setUpClass() throws ConfigError, FileNotFoundException, InterruptedException {
-		settings = new SessionSettings(new FileInputStream("src/main/resources/application.properties"));
+		settings = new SessionSettings(new FileInputStream("src/test/resources/application.properties"));
 	}
 
 	@Before

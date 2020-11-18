@@ -1,4 +1,4 @@
-package com.simtlix.fixclient;
+package com.agili.fixclient;
 
 import quickfix.*;
 import quickfix.Message;
@@ -39,10 +39,8 @@ public class FixClient extends ApplicationCrackerAdapter {
     }
 
     /**
-     * Esta función es llamada cuando una contraparte envia un
-     * mensaje de tipo Logon (A). Por defecto, acepta toda conexión
-     * entrante. Es posible utilizar esta función para crear
-     * autenticación simple, o basada en sistemas de autententicación centralizadas.
+     * This functions is called when the server send a message of typeLogon (A). By default
+     * accept all connections. This method can be used for creates the authentication.
      * @param sessionId
      */
     @Override
@@ -50,7 +48,7 @@ public class FixClient extends ApplicationCrackerAdapter {
         System.out.println("Login with server successfully");
         this.connected = true;
         try {
-            enviarSusbscripciones(sessionId);
+            sendSubscriptions(sessionId);
         } catch (SessionNotFound e) {
             throw new RuntimeException(e);
         }
@@ -101,7 +99,7 @@ public class FixClient extends ApplicationCrackerAdapter {
     public void onMessage(ExecutionReport message, SessionID sessionID) {
         try {
             if (esExecutionReportNew(message)) {
-                new Exception("No es una orden nueva");
+                new Exception("The order is old");
             }
         } catch (FieldNotFound fieldNotFound) {
             fieldNotFound.printStackTrace();
@@ -125,7 +123,7 @@ public class FixClient extends ApplicationCrackerAdapter {
             noMDEntries.get(mdEntryType);
             noMDEntries.get(mdEntryPx);
             noMDEntries.get(mdEntrySize);
-            //TODO almacenar
+            //TODO store
             priceBySymbol.put("EUR/USD", mdEntryPx.getValue());
         }
 
@@ -133,7 +131,7 @@ public class FixClient extends ApplicationCrackerAdapter {
 
     @quickfix.MessageCracker.Handler
     public void onMessage(MarketDataIncrementalRefresh message, SessionID sessionID) throws FieldNotFound {
-        MarketDataSnapshotFullRefresh.NoMDEntries noMDEntries = new MarketDataSnapshotFullRefresh.NoMDEntries();
+        MarketDataIncrementalRefresh.NoMDEntries noMDEntries = new MarketDataIncrementalRefresh.NoMDEntries();
         for(int i = 0; i < message.getNoMDEntries().getValue(); i++) {
             MDEntryType mdEntryType = new MDEntryType();
             MDEntryPx mdEntryPx = new MDEntryPx();
@@ -142,7 +140,7 @@ public class FixClient extends ApplicationCrackerAdapter {
             noMDEntries.get(mdEntryType);
             noMDEntries.get(mdEntryPx);
             noMDEntries.get(mdEntrySize);
-            //TODO almacenar
+            //TODO store
             priceBySymbol.put("EUR/USD", mdEntryPx.getValue());
         }
     }
@@ -212,7 +210,7 @@ public class FixClient extends ApplicationCrackerAdapter {
      * Crea subscripciones
      * @param sessionId
      */
-    private void enviarSusbscripciones(SessionID sessionId) throws SessionNotFound {
+    private void sendSubscriptions(SessionID sessionId) throws SessionNotFound {
 
         //basado en pag 35 de SBAFIX_MD_1_18_9_MAR2020_preliminar.pdf
         //ver notas pag 41
