@@ -16,9 +16,11 @@ public class FixClientApplication {
 			String user = settings.getDefaultProperties().getProperty("user");
 			String password = settings.getDefaultProperties().getProperty("password");
 			FixClient application = new FixClient(user, password);
+			LogFactory logFactory = new ScreenLogFactory(settings);
+			FileStoreFactory storeFactory = new FileStoreFactory(settings);
 
-			SocketInitiator socketInitiator = new SocketInitiator(application, new MemoryStoreFactory(), settings,
-					new ScreenLogFactory(), new DefaultMessageFactory());
+			SocketInitiator socketInitiator = new SocketInitiator(application, storeFactory, settings,
+					logFactory, new DefaultMessageFactory());
 			socketInitiator.start();
 		} catch (ConfigError configError) {
 			configError.printStackTrace();
