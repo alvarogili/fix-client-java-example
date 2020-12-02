@@ -25,8 +25,11 @@ public class FixClientApplication {
 		} catch (ConfigError configError) {
 			configError.printStackTrace();
 		}
-		Thread.sleep(5000l);
-
+		while(true) {
+			//debo colocar este while(true) porque si esta fuera
+			//del horario de mercado la aplicación termina
+			Thread.sleep(5000l);
+		}
 	}
 
 }
